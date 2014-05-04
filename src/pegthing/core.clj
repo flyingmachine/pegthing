@@ -2,6 +2,7 @@
   (:gen-class))
 
 ;; TODO explain why it's nice to start at 0
+;; used to produce range of peg positions on first row
 (defn tri*
   "Generates lazy sequence of triangular numbers"
   ([] (tri* 0 0))
@@ -15,36 +16,33 @@
   [n]
   (= n (last (take-while #(>= n %) tri))))
 
-(def complementary-dirs
-  {2 5
-   3 6
-   4 1})
+(defn add-connection
+  [new-connection connections]
+  (if (nil? connections)
+    [new-connection]
+    (conj connections new-connection)))
 
-(defn join-right
-  [row-num board pos]
-  (assoc-in board [pos 2] (inc pos)))
+(defn join-positions
+  [board p1 p2 axis]
+  (reduce (fn [board [p1 p2]]
+            (update-in board [p1 axis] (partial add-connection p2)))
+          board
+          [[p1 p2]
+           [p2 p1]]))
 
-(defn join-down-right
-  [row-num board pos]
-  (assoc-in board [pos 3] (+ pos row-num 1)))
-
-(defn join-down-left
-  [row-num board pos]
-  (assoc-in board [pos 4] (+ pos row-num)))
-
-(defn adjacent-joiners
-  [board row-num]
-  [(partial join-right row-num)
-   (partial join-down-left row-num)
-   (partial join-down-right row-num)])
+(defn find-neighbors
+  [row-num pos]
+  (conj (if-not (triangular? pos) [[:a (inc pos)]])
+        [:b (+ row-num pos)]
+        [:c (+ row-num pos 1)]))
 
 (defn add-peg
-  [board row-num pos joiners]
-  (let [joiners (if (triangular? pos) (rest joiners) joiners)
-        board (assoc-in board [pos :pegged] false)]
-    (reduce (fn [board joiner] (joiner board pos))
+  [board row-num pos]
+  (let [board (assoc-in board [pos :pegged] true)]
+    (reduce (fn [board [axis neighbor-pos]]
+              (join-positions board pos neighbor-pos axis))
             board
-            joiners)))
+            (neighbors row-num pos))))
 
 (defn peg-positions
   [row-num]
@@ -53,7 +51,9 @@
 
 (defn add-row
   [board row-num]
-  (reduce add-peg board (peg-positions row-num) (adjacent-joiners board row-num)))
+  (reduce (fn [board pos] (add-peg board row-num pos))
+          board
+          (peg-positions row-num)))
 
 (defn add-rows
   [board rows]
@@ -61,16 +61,13 @@
 
 (defn add-last-row
   [board rows]
-  )
+  board)
 
 (defn new-board
   [rows]
   (let [board {}]
     (merge (add-rows board rows)
            (add-last-row board rows))))
-
-(defn bigraph-assoc
-  [board p1 p2 dir])
 
 (defn -main
   "I don't do a whole lot ... yet."
