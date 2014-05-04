@@ -30,7 +30,7 @@
           [[p1 p2]
            [p2 p1]]))
 
-(defn find-neighbors
+(defn neighbors
   [row-num pos]
   (conj (if-not (triangular? pos) [[:a (inc pos)]])
         [:b (+ row-num pos)]
