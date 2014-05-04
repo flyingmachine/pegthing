@@ -61,13 +61,16 @@
 
 (defn add-last-row
   [board rows]
-  board)
+  (let [position-pairs (partition 2 1 (peg-positions rows))]
+    (reduce (fn [board [p1 p2]]
+              (join-positions board p1 p2 :a))
+            board
+            position-pairs)))
 
 (defn new-board
   [rows]
   (let [board {}]
-    (merge (add-rows board rows)
-           (add-last-row board rows))))
+    (add-last-row (add-rows board rows) rows)))
 
 (defn -main
   "I don't do a whole lot ... yet."
