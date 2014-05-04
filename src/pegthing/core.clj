@@ -57,20 +57,39 @@
 
 (defn add-rows
   [board rows]
-  (reduce add-row board (range 1 rows)))
-
-(defn add-last-row
-  [board rows]
-  (let [position-pairs (partition 2 1 (peg-positions rows))]
-    (reduce (fn [board [p1 p2]]
-              (join-positions board p1 p2 :a))
-            board
-            position-pairs)))
+  (reduce add-row board (range 1 (inc rows))))
 
 (defn new-board
   [rows]
   (let [board {}]
-    (add-last-row (add-rows board rows) rows)))
+    (add-rows board rows)))
+
+
+;; printing the board
+(def letters (map (comp str char) (range 97 123)))
+(def pos-chars 3)
+
+(defn row-padding
+  [row-string rows]
+  (let [max-row-chars (* rows pos-chars)
+        pad-length (/ (- max-row-chars (count row-string)) 2)]
+    (apply str (take pad-length (repeat " ")))))
+
+(defn render-pos
+  [board pos]
+  (str (nth letters (dec pos))
+       (if (get-in board [pos :pegged]) "0" "-")))
+
+(defn render-row
+  [board rows row-num]
+  (clojure.string/join " " (map (partial render-pos board) (peg-positions row-num))))
+
+(defn print-board
+  [board rows]
+  (doseq [row-num (range 1 (inc rows))]
+    (let [row-string (render-row board rows row-num)
+          padding (row-padding row-string rows)]
+      (println padding row-string))))
 
 (defn -main
   "I don't do a whole lot ... yet."
