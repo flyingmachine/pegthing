@@ -1,4 +1,5 @@
 (ns pegthing.core
+  (require [clojure.set])
   (:gen-class))
 
 ;; TODO explain why it's nice to start at 0
@@ -18,9 +19,7 @@
 
 (defn add-connection
   [new-connection connections]
-  (if (nil? connections)
-    [new-connection]
-    (conj connections new-connection)))
+  (set (conj connections new-connection)))
 
 (defn join-positions
   [board p1 p2 axis]
@@ -56,19 +55,25 @@
           (peg-positions row-num)))
 
 (defn add-rows
-  [board rows]
-  (reduce add-row board (range 1 (inc rows))))
+  [board]
+  (reduce add-row board (range 1 (inc (:rows board)))))
+
+(def alpha-start 97)
+(def alpha-end 123)
+(def letters (map (comp str char) (range alpha-start alpha-end)))
+(def pos-chars 3)
+(defn letter->pos
+  [letter]
+  (inc (- (int (first letter)) alpha-start)))
 
 (defn new-board
-  [rows]
-  (let [board {}]
-    (add-rows board rows)))
-
+  [rows empty-pos-letter]
+  (let [board {:rows rows}]
+    (assoc-in (add-rows board)
+              [(letter->pos empty-pos-letter) :pegged]
+              false)))
 
 ;; printing the board
-(def letters (map (comp str char) (range 97 123)))
-(def pos-chars 3)
-
 (defn row-padding
   [row-string rows]
   (let [max-row-chars (* rows pos-chars)
@@ -81,15 +86,39 @@
        (if (get-in board [pos :pegged]) "0" "-")))
 
 (defn render-row
-  [board rows row-num]
+  [board row-num]
   (clojure.string/join " " (map (partial render-pos board) (peg-positions row-num))))
 
 (defn print-board
-  [board rows]
-  (doseq [row-num (range 1 (inc rows))]
-    (let [row-string (render-row board rows row-num)
-          padding (row-padding row-string rows)]
+  [board]
+  (doseq [row-num (range 1 (inc (:rows board)))]
+    (let [row-string (render-row board row-num)
+          padding (row-padding row-string (:rows board))]
       (println padding row-string))))
+
+(defn between
+  [board axis p1 p2]
+  (first (clojure.set/intersection (get-in board [p1 axis])
+                                   (get-in board [p2 axis]))))
+
+(defn valid-move?
+  [board l1 l2]
+  (let [p1 (letter->pos l1)
+        p2 (letter->pos l2)]
+    (and
+     (get-in board [p1 :pegged])
+     (not (get-in board [p2 :pegged]))
+     (some (fn [axis]
+             (if-let [jumped (between board axis p1 p2)]
+               (and (get-in board [jumped :pegged])
+                    jumped)))
+           [:a :b :c]))))
+
+(defn make-move
+  [board l1 l2]
+  (if-let [jumped (valid-move? board l1 l2)]
+    
+    ))
 
 (defn -main
   "I don't do a whole lot ... yet."
