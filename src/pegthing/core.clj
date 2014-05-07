@@ -4,11 +4,9 @@
 
 (declare successful-move prompt-move game-over query-rows)
 
-;; TODO explain why it's nice to start at 0
-;; used to produce range of peg positions on first row
 (defn tri*
   "Generates lazy sequence of triangular numbers"
-  ([] (tri* 0 0))
+  ([] (tri* 0 1))
   ([sum n]
      (let [new-sum (+ sum n)]
        (cons new-sum (lazy-seq (tri* new-sum (inc n)))))))
@@ -18,6 +16,11 @@
 (defn triangular?
   [n]
   (= n (last (take-while #(>= n %) tri))))
+
+(def rows
+  (cons '(1)
+        (map (partial apply concat)
+             (partition-all 2 (rest (partition-by triangular? (iterate inc 1)))))))
 
 (def axes [:a :b :c])
 
@@ -49,8 +52,7 @@
 
 (defn row-positions
   [row-num]
-  (map inc (range (nth tri (dec row-num))
-                  (nth tri row-num))))
+  (nth rows (dec row-num)))
 
 (defn add-row
   [board row-num]
