@@ -196,7 +196,7 @@
   [board]
   (let [remaining-pegs (count (filter :pegged (vals board)))]
     (println "Game over! You had" remaining-pegs "pegs left.")
-    (println "Play again? y/n")
+    (println "Play again? y/n [y]")
     (let [input (get-input)]
       (if (= "y" input)
         (query-rows)
