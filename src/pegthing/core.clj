@@ -2,7 +2,7 @@
   (require [clojure.set])
   (:gen-class))
 
-(declare successful-move prompt-move game-over)
+(declare successful-move prompt-move game-over query-rows)
 
 ;; TODO explain why it's nice to start at 0
 ;; used to produce range of peg positions on first row
@@ -97,6 +97,30 @@
           padding (row-padding row-string (:rows board))]
       (println padding row-string))))
 
+(defn jump-pos
+  "Next position when p1 tries to jump p2"
+  [board p1 p2 axis]
+  (first (disj (get-in board [p2 axis]) p1)))
+
+(defn can-jump?
+  "Can pos jump over connected-pos? If so, returns position it would
+  jump to"
+  [board pos axis connected-pos]
+  (let [jump-to (jump-pos board pos connected-pos axis)]
+    (and (get-in board [connected-pos :pegged])
+         (get board jump-to)
+         (not (get-in board [jump-to :pegged]))
+         jump-to)))
+
+(defn valid-moves
+  [board pos]
+  (let [meta (get board pos)]
+    (set (mapcat (fn [axis]
+                   (filter identity
+                           (map (partial can-jump? board pos axis)
+                                (axis meta))))
+                 axes))))
+
 (defn between
   [board axis p1 p2]
   (first (clojure.set/intersection (get-in board [p1 axis])
@@ -104,14 +128,8 @@
 
 (defn valid-move?
   [board p1 p2]
-  (and
-   (get-in board [p1 :pegged])
-   (not (get-in board [p2 :pegged]))
-   (some (fn [axis]
-           (if-let [jumped (between board axis p1 p2)]
-             (and (get-in board [jumped :pegged])
-                  jumped)))
-         axes)))
+  (and (contains? (valid-moves board p1) p2)
+       (some #(between board % p1 p2) axes)))
 
 (defn remove-peg
   [board p]
@@ -126,8 +144,12 @@
   (add-peg (remove-peg board p1) p2))
 
 (defn get-input
-  []
-  (clojure.string/lower-case (clojure.string/trim (read-line))))
+  ([] (get-input nil))
+  ([default]
+     (let [input (clojure.string/trim (read-line))]
+       (if (empty? input)
+         default
+         (clojure.string/lower-case input)))))
 
 (defn characters-as-strings
   [string]
@@ -140,7 +162,9 @@
 
 (defn prompt-move
   [board]
-  (println "Move from where to where? Enter two letters:")
+  (println "\n\nYour board:\n")
+  (print-board board)
+  (println "\nMove from where to where? Enter two letters:")
   (let [input (map letter->pos (characters-as-strings (get-input)))]
     (if-let [new-board (make-move board (first input) (second input))]
       (successful-move new-board)
@@ -148,43 +172,24 @@
         (println "That was an invalid move :(")
         (prompt-move board)))))
 
-(defn jump-pos
-  "Next position when p1 tries to jump p2"
-  [board p1 p2 axis]
-  (first (disj (get-in board [p2 axis]) p1)))
-
-(defn can-jump?
-  "Can jump from p1 to p2?"
-  [board pos connected-pos axis]
-  (let [jump-to (jump-pos board pos connected-pos axis)]
-    (and (get-in board [connected-pos :pegged])
-         (not (get-in board [jump-to :pegged]))
-         jump-to)))
-
-(defn valid-moves
-  [board pos]
-  (let [meta (get board pos)]
-    (some (fn [axis]
-            (some (fn [connected-pos] (can-jump? board pos connected-pos axis))
-                  (axis meta)))
-          axes)))
-
 (defn can-move?
   [board]
-  (some valid-moves
+  (some (comp not-empty (partial valid-moves board))
         (map first (filter #(get (second %) :pegged) board))))
 
 (defn successful-move
   [board]
   (if (can-move? board)
-    (prompt-move board)
+    (do
+      (print-board board)
+      (prompt-move board))
     (game-over board)))
 
 (defn game-over
   [board]
   (let [remaining-pegs (count (filter :pegged (vals board)))]
     (println "Game over! You had" remaining-pegs "pegs left.")
-    (println "Play again?")
+    (println "Play again? y/n")
     (let [input (get-input)]
       (if (= "y" input)
         (query-rows)
@@ -196,14 +201,13 @@
   [board]
   (println "Here's your board:")
   (print-board board)
-  (println "Remove which peg?")
-  (prompt-move (remove-peg board (letter->pos (get-input)))))
+  (println "Remove which peg? [e]")
+  (prompt-move (remove-peg board (letter->pos (get-input "e")))))
 
 (defn query-rows
   []
   (println "How many rows? [5]")
-  (let [input (read-line)
-        rows (if-not (empty? input) (read-string input) 5)
+  (let [rows (get-input 5)
         board (new-board rows)]
     (query-empty-peg board)))
 
@@ -211,4 +215,4 @@
   "I don't do a whole lot ... yet."
   [& args]
   (println "Get ready to play peg thing!")
-  ())
+  (query-rows))
