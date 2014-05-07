@@ -47,7 +47,7 @@
             board
             (neighbors row-num pos))))
 
-(defn peg-positions
+(defn row-positions
   [row-num]
   (map inc (range (nth tri (dec row-num))
                   (nth tri row-num))))
@@ -56,7 +56,7 @@
   [board row-num]
   (reduce (fn [board pos] (add-pos board row-num pos))
           board
-          (peg-positions row-num)))
+          (row-positions row-num)))
 
 (defn add-rows
   [board]
@@ -70,9 +70,16 @@
   [letter]
   (inc (- (int (first letter)) alpha-start)))
 
+(defn remove-last-row
+  "board creation process results in an extra row; remove it"
+  [board]
+  (reduce (fn [board pos] (dissoc board pos))
+          board
+          (row-positions (inc (:rows board)))))
+
 (defn new-board
   [rows]
-  (add-rows {:rows rows}))
+  (remove-last-row (add-rows {:rows rows})))
 
 ;; printing the board
 (defn row-padding
@@ -88,7 +95,7 @@
 
 (defn render-row
   [board row-num]
-  (clojure.string/join " " (map (partial render-pos board) (peg-positions row-num))))
+  (clojure.string/join " " (map (partial render-pos board) (row-positions row-num))))
 
 (defn print-board
   [board]

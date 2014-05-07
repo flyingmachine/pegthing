@@ -5,3 +5,5 @@
 * determine whether a move is legal
 * determine if game is over
 * tally score
+* debug
+a f g l
