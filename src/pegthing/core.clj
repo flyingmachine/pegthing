@@ -1,11 +1,9 @@
 (ns pegthing.core
-  (require [clojure.set])
+  (require [clojure.set :as set])
   (:gen-class))
 
 (declare successful-move prompt-move game-over query-rows)
 
-;; TODO explain why it's nice to start at 0
-;; used to produce range of peg positions on first row
 (defn tri*
   "Generates lazy sequence of triangular numbers"
   ([] (tri* 0 0))
@@ -22,13 +20,13 @@
 (def axes [:a :b :c])
 
 (defn add-connection
-  [new-connection connections]
-  (set (conj connections new-connection)))
+  [connections connected-pos axis]
+  (set (conj connections [connected-pos axis])))
 
 (defn join-positions
   [board p1 p2 axis]
   (reduce (fn [board [p1 p2]]
-            (update-in board [p1 axis] (partial add-connection p2)))
+            (update-in board [p1 :connections] add-connection p2 axis))
           board
           [[p1 p2]
            [p2 p1]]))
@@ -77,9 +75,19 @@
           board
           (row-positions (inc (:rows board)))))
 
+(defn add-possible-destinations
+  [board]
+  (let [position-range-end (count board)]
+    (reduce (fn [new-board pos]
+              (assoc-in new-board
+                        [pos :possible-destinations]
+                        (possible-destinations board pos)))
+            board
+            (range 1 position-range-end))))
+
 (defn new-board
   [rows]
-  (remove-last-row (add-rows {:rows rows})))
+  (add-possible-destinations (remove-last-row (add-rows {:rows rows}))))
 
 ;; printing the board
 (defn row-padding
@@ -109,34 +117,35 @@
   [board p1 p2 axis]
   (first (disj (get-in board [p2 axis]) p1)))
 
-(defn can-jump?
-  "Can pos jump over connected-pos? If so, returns position it would
-  jump to"
-  [board pos axis connected-pos]
-  (let [jump-to (jump-pos board pos connected-pos axis)]
-    (and (get-in board [connected-pos :pegged])
-         (get board jump-to)
-         (not (get-in board [jump-to :pegged]))
-         jump-to)))
+(defn connections
+  [board pos]
+  (:connections (get board pos)))
+
+(defn between
+  [board p1 p2]
+  (ffirst (set/intersection (connections board p1)
+                            (connections board p2))))
+
+
+(defn possible-destinations
+  "Positions that pos can jump to; positions that have a common
+  neighbor with pos"
+  [board pos]
+  (map first
+       (filter (fn [[test-pos _]] (between board pos test-pos))
+               (dissoc board pos))))
 
 (defn valid-moves
   [board pos]
-  (let [meta (get board pos)]
-    (set (mapcat (fn [axis]
-                   (filter identity
-                           (map (partial can-jump? board pos axis)
-                                (axis meta))))
-                 axes))))
-
-(defn between
-  [board axis p1 p2]
-  (first (clojure.set/intersection (get-in board [p1 axis])
-                                   (get-in board [p2 axis]))))
+  (set (filter (fn [destination]
+                 (let [jumped (between board pos destination)]
+                   (and (not (get-in board [destination :pegged]))
+                        (get-in board [jumped :pegged]))))
+               (possible-destinations board pos))))
 
 (defn valid-move?
   [board p1 p2]
-  (and (contains? (valid-moves board p1) p2)
-       (some #(between board % p1 p2) axes)))
+  (contains? (valid-moves board p1) p2))
 
 (defn remove-peg
   [board p]
@@ -147,6 +156,7 @@
   (assoc-in board [p :pegged] true))
 
 (defn move-peg
+  "Take peg out of p1 and place it in p2"
   [board p1 p2]
   (add-peg (remove-peg board p1) p2))
 
@@ -164,8 +174,8 @@
 
 (defn make-move
   [board p1 p2]
-  (if-let [jumped (valid-move? board p1 p2)]
-    (move-peg (remove-peg board jumped) p1 p2)))
+  (if (valid-move? board p1 p2)
+    (move-peg (remove-peg board (between board p1 p2)) p1 p2)))
 
 (defn prompt-move
   [board]
