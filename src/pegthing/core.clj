@@ -4,6 +4,9 @@
 
 (declare successful-move prompt-move game-over query-rows)
 
+;;;;
+;; Create the board
+;;;;
 (defn tri*
   "Generates lazy sequence of triangular numbers"
   ([] (tri* 0 1))
@@ -64,14 +67,6 @@
   [board]
   (reduce add-row board (range 1 (inc (:rows board)))))
 
-(def alpha-start 97)
-(def alpha-end 123)
-(def letters (map (comp str char) (range alpha-start alpha-end)))
-(def pos-chars 3)
-(defn letter->pos
-  [letter]
-  (inc (- (int (first letter)) alpha-start)))
-
 (defn remove-last-row
   "board creation process results in an extra row; remove it"
   [board]
@@ -110,41 +105,9 @@
   [rows]
   (add-possible-destinations (remove-last-row (add-rows {:rows rows}))))
 
-;; printing the board
-(defn row-padding
-  [row-num rows]
-  (let [pad-length (/ (* (- rows row-num) pos-chars) 2)]
-    (apply str (take pad-length (repeat " ")))))
-
-(def ansi-styles
-  {:blue  "[34m"
-   :green "[32m"
-   :reset "[0m"})
-
-(defn ansi
-  [style]
-  (str \u001b (style ansi-styles)))
-
-(defn colorize
-  [text color]
-  (str (ansi color) text (ansi :reset)))
-
-(defn render-pos
-  [board pos]
-  (str (nth letters (dec pos))
-       (if (get-in board [pos :pegged]) (colorize "0" :blue) (colorize "-" :green))))
-
-(defn render-row
-  [board row-num]
-  (clojure.string/join " " (map (partial render-pos board) (row-positions row-num))))
-
-(defn print-board
-  [board]
-  (doseq [row-num (range 1 (inc (:rows board)))]
-    (let [row-string (render-row board row-num)
-          padding (row-padding row-num (:rows board))]
-      (println padding row-string))))
-
+;;;;
+;; Move pegs
+;;;;
 (defn valid-moves
   [board pos]
   (set (filter (fn [destination]
@@ -170,6 +133,68 @@
   [board p1 p2]
   (add-peg (remove-peg board p1) p2))
 
+(defn make-move
+  [board p1 p2]
+  (if (valid-move? board p1 p2)
+    (move-peg (remove-peg board (between board p1 p2)) p1 p2)))
+
+(defn can-move?
+  [board]
+  (some (comp not-empty (partial valid-moves board))
+        (map first (filter #(get (second %) :pegged) board))))
+
+;;;;
+;; Represent board textually and print it
+;;;;
+(def alpha-start 97)
+(def alpha-end 123)
+(def letters (map (comp str char) (range alpha-start alpha-end)))
+(def pos-chars 3)
+
+(def ansi-styles
+  {:red   "[31m"
+   :green "[32m"
+   :blue  "[34m"
+   :reset "[0m"})
+
+(defn ansi
+  [style]
+  (str \u001b (style ansi-styles)))
+
+(defn colorize
+  [text color]
+  (str (ansi color) text (ansi :reset)))
+
+(defn render-pos
+  [board pos]
+  (str (nth letters (dec pos))
+       (if (get-in board [pos :pegged])
+         (colorize "0" :blue)
+         (colorize "-" :red))))
+
+(defn render-row
+  [board row-num]
+  (clojure.string/join " " (map (partial render-pos board) (row-positions row-num))))
+
+(defn row-padding
+  [row-num rows]
+  (let [pad-length (/ (* (- rows row-num) pos-chars) 2)]
+    (apply str (take pad-length (repeat " ")))))
+
+(defn print-board
+  [board]
+  (doseq [row-num (range 1 (inc (:rows board)))]
+    (let [row-string (render-row board row-num)
+          padding (row-padding row-num (:rows board))]
+      (println padding row-string))))
+
+;;;;
+;; Interaction
+;;;;
+(defn letter->pos
+  [letter]
+  (inc (- (int (first letter)) alpha-start)))
+
 (defn get-input
   ([] (get-input nil))
   ([default]
@@ -182,14 +207,8 @@
   [string]
   (re-seq #"[a-zA-Z]" string))
 
-(defn make-move
-  [board p1 p2]
-  (if (valid-move? board p1 p2)
-    (move-peg (remove-peg board (between board p1 p2)) p1 p2)))
-
 (defn prompt-move
   [board]
-  (println "\nYour board:")
   (print-board board)
   (println "Move from where to where? Enter two letters:")
   (let [input (map letter->pos (characters-as-strings (get-input)))]
@@ -198,11 +217,6 @@
       (do
         (println "\n!!! That was an invalid move :(\n")
         (prompt-move board)))))
-
-(defn can-move?
-  [board]
-  (some (comp not-empty (partial valid-moves board))
-        (map first (filter #(get (second %) :pegged) board))))
 
 (defn successful-move
   [board]
