@@ -14,13 +14,9 @@
 (def tri (tri*))
 
 (defn triangular?
+  "Is the number triangular? e.g. 1, 3, 6, 10, 15, etc"
   [n]
   (= n (last (take-while #(>= n %) tri))))
-
-(def rows
-  (cons '(1)
-        (map (partial apply concat)
-             (partition-all 2 (rest (partition-by triangular? (iterate inc 1)))))))
 
 (def axes [:a :b :c])
 
@@ -33,8 +29,7 @@
   (reduce (fn [board [p1 p2]]
             (update-in board [p1 :connections] add-connection p2 axis))
           board
-          [[p1 p2]
-           [p2 p1]]))
+          [[p1 p2] [p2 p1]]))
 
 (defn neighbors
   [row-num pos]
@@ -49,6 +44,11 @@
               (join-positions board pos neighbor-pos axis))
             board
             (neighbors row-num pos))))
+
+(def rows
+  (cons '(1)
+        (map (partial apply concat)
+             (partition-all 2 (rest (partition-by triangular? (iterate inc 1)))))))
 
 (defn row-positions
   [row-num]
@@ -79,6 +79,23 @@
           board
           (row-positions (inc (:rows board)))))
 
+(defn connections
+  [board pos]
+  (:connections (get board pos)))
+
+(defn between
+  [board p1 p2]
+  (ffirst (set/intersection (connections board p1)
+                            (connections board p2))))
+
+(defn possible-destinations
+  "Positions that pos can jump to; positions that have a common
+  neighbor with pos"
+  [board pos]
+  (map first
+       (filter (fn [[test-pos _]] (between board pos test-pos))
+               (dissoc board pos))))
+
 (defn add-possible-destinations
   [board]
   (let [position-range-end (count board)]
@@ -95,15 +112,27 @@
 
 ;; printing the board
 (defn row-padding
-  [row-string rows]
-  (let [max-row-chars (* rows pos-chars)
-        pad-length (/ (- max-row-chars (count row-string)) 2)]
+  [row-num rows]
+  (let [pad-length (/ (* (- rows row-num) pos-chars) 2)]
     (apply str (take pad-length (repeat " ")))))
+
+(def ansi-styles
+  {:blue  "[34m"
+   :green "[32m"
+   :reset "[0m"})
+
+(defn ansi
+  [style]
+  (str \u001b (style ansi-styles)))
+
+(defn colorize
+  [text color]
+  (str (ansi color) text (ansi :reset)))
 
 (defn render-pos
   [board pos]
   (str (nth letters (dec pos))
-       (if (get-in board [pos :pegged]) "0" "-")))
+       (if (get-in board [pos :pegged]) (colorize "0" :blue) (colorize "-" :green))))
 
 (defn render-row
   [board row-num]
@@ -113,31 +142,8 @@
   [board]
   (doseq [row-num (range 1 (inc (:rows board)))]
     (let [row-string (render-row board row-num)
-          padding (row-padding row-string (:rows board))]
+          padding (row-padding row-num (:rows board))]
       (println padding row-string))))
-
-(defn jump-pos
-  "Next position when p1 tries to jump p2"
-  [board p1 p2 axis]
-  (first (disj (get-in board [p2 axis]) p1)))
-
-(defn connections
-  [board pos]
-  (:connections (get board pos)))
-
-(defn between
-  [board p1 p2]
-  (ffirst (set/intersection (connections board p1)
-                            (connections board p2))))
-
-
-(defn possible-destinations
-  "Positions that pos can jump to; positions that have a common
-  neighbor with pos"
-  [board pos]
-  (map first
-       (filter (fn [[test-pos _]] (between board pos test-pos))
-               (dissoc board pos))))
 
 (defn valid-moves
   [board pos]
@@ -183,14 +189,14 @@
 
 (defn prompt-move
   [board]
-  (println "\n\nYour board:\n")
+  (println "\nYour board:")
   (print-board board)
-  (println "\nMove from where to where? Enter two letters:")
+  (println "Move from where to where? Enter two letters:")
   (let [input (map letter->pos (characters-as-strings (get-input)))]
     (if-let [new-board (make-move board (first input) (second input))]
       (successful-move new-board)
       (do
-        (println "That was an invalid move :(")
+        (println "\n!!! That was an invalid move :(\n")
         (prompt-move board)))))
 
 (defn can-move?
@@ -209,7 +215,8 @@
 (defn game-over
   [board]
   (let [remaining-pegs (count (filter :pegged (vals board)))]
-    (println "Game over! You had" remaining-pegs "pegs left.")
+    (println "Game over! You had" remaining-pegs "pegs left:")
+    (print-board board)
     (println "Play again? y/n [y]")
     (let [input (get-input "y")]
       (if (= "y" input)
