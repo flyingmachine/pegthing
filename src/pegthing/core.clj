@@ -21,104 +21,83 @@
   [n]
   (= n (last (take-while #(>= n %) tri))))
 
-(def axes [:a :b :c])
+(defn nth-tri
+  [n]
+  (last (take n tri)))
 
-(defn add-connection
-  [connections connected-pos axis]
-  (set (conj connections [connected-pos axis])))
+(defn row-num
+  "Returns row number the position belongs to: pos 1 in row 1,
+  positions 2 and 3 in row 2, etc"
+  [pos]
+  (inc (count (take-while #(> pos %) tri))))
 
-(defn join-positions
-  [board p1 p2 axis]
-  (reduce (fn [board [p1 p2]]
-            (update-in board [p1 :connections] add-connection p2 axis))
-          board
-          [[p1 p2] [p2 p1]]))
+(defn in-bounds?
+  "Is every position less than or equal the max position?"
+  [max-pos & positions]
+  (every? (fn [pos] (>= max-pos pos)) positions))
 
-(defn neighbors
-  [row-num pos]
-  (conj (if-not (triangular? pos) [[:a (inc pos)]])
-        [:b (+ row-num pos)]
-        [:c (+ row-num pos 1)]))
+(defn connect
+  [board max-pos pos neighbor destination]
+  (if (in-bounds? max-pos neighbor destination)
+    (reduce (fn [new-board [p1 p2]] (assoc-in new-board [p1 :connections p2] neighbor))
+            board
+            [[pos destination] [destination pos]])
+    board))
+
+(defn connect-right
+  [board max-pos pos]
+  (let [neighbor (inc pos)
+        destination (inc neighbor)]
+    (if-not (or (triangular? neighbor) (triangular? pos))
+      (connect board max-pos pos neighbor destination)
+      board)))
+
+(defn connect-down-left
+  [board max-pos pos]
+  (let [row (row-num pos)
+        neighbor (+ row pos)
+        destination (+ 1 row neighbor)]
+    (connect board max-pos pos neighbor destination)))
+
+(defn connect-down-right
+  [board max-pos pos]
+  (let [row (row-num pos)
+        neighbor (+ 1 row pos)
+        destination (+ 2 row neighbor)]
+    (connect board max-pos pos neighbor destination)))
 
 (defn add-pos
-  [board row-num pos]
-  (let [board (assoc-in board [pos :pegged] true)]
-    (reduce (fn [board [axis neighbor-pos]]
-              (join-positions board pos neighbor-pos axis))
-            board
-            (neighbors row-num pos))))
-
-(def rows
-  (cons '(1)
-        (map (partial apply concat)
-             (partition-all 2 (rest (partition-by triangular? (iterate inc 1)))))))
-
-(defn row-positions
-  [row-num]
-  (nth rows (dec row-num)))
-
-(defn add-row
-  [board row-num]
-  (reduce (fn [board pos] (add-pos board row-num pos))
-          board
-          (row-positions row-num)))
-
-(defn add-rows
-  [board]
-  (reduce add-row board (range 1 (inc (:rows board)))))
-
-(defn remove-last-row
-  "board creation process results in an extra row; remove it"
-  [board]
-  (reduce (fn [board pos] (dissoc board pos))
-          board
-          (row-positions (inc (:rows board)))))
-
-(defn connections
-  [board pos]
-  (:connections (get board pos)))
-
-(defn between
-  [board p1 p2]
-  (ffirst (set/intersection (connections board p1)
-                            (connections board p2))))
-
-(defn possible-destinations
-  "Positions that pos can jump to; positions that have a common
-  neighbor with pos"
-  [board pos]
-  (map first
-       (filter (fn [[test-pos _]] (between board pos test-pos))
-               (dissoc board pos))))
-
-(defn add-possible-destinations
-  [board]
-  (let [position-range-end (count board)]
-    (reduce (fn [new-board pos]
-              (assoc-in new-board
-                        [pos :possible-destinations]
-                        (possible-destinations board pos)))
-            board
-            (range 1 position-range-end))))
+  [board max-pos pos]
+  (let [pegged-board (assoc-in board [pos :pegged] true)]
+    (reduce (fn [new-board connector] (connector new-board max-pos pos))
+            pegged-board
+            [connect-right connect-down-left connect-down-right])))
 
 (defn new-board
   [rows]
-  (add-possible-destinations (remove-last-row (add-rows {:rows rows}))))
-
+  (let [initial-board {:rows rows}
+        max-pos (nth-tri rows)]
+    (reduce (fn [board pos] (add-pos board max-pos pos))
+            initial-board
+            (range 1 (inc max-pos)))))
 ;;;;
 ;; Move pegs
 ;;;;
+(defn pegged?
+  [board pos]
+  (get-in board [pos :pegged]))
+
 (defn valid-moves
   [board pos]
-  (set (filter (fn [destination]
-                 (let [jumped (between board pos destination)]
-                   (and (not (get-in board [destination :pegged]))
-                        (get-in board [jumped :pegged]))))
-               (possible-destinations board pos))))
+  (into {}
+        (filter (fn [[destination jumped]]
+                  (and (not (pegged? board destination))
+                       (pegged? board jumped)))
+                (get-in board [pos :connections]))))
 
 (defn valid-move?
   [board p1 p2]
-  (contains? (valid-moves board p1) p2))
+  (get (valid-moves board p1) p2))
 
 (defn remove-peg
   [board p]
@@ -135,8 +114,8 @@
 
 (defn make-move
   [board p1 p2]
-  (if (valid-move? board p1 p2)
-    (move-peg (remove-peg board (between board p1 p2)) p1 p2)))
+  (if-let [jumped (valid-move? board p1 p2)]
+    (move-peg (remove-peg board jumped) p1 p2)))
 
 (defn can-move?
   [board]
@@ -171,6 +150,11 @@
        (if (get-in board [pos :pegged])
          (colorize "0" :blue)
          (colorize "-" :red))))
+
+(defn row-positions
+  [row-num]  
+  (range (inc (or (nth-tri (dec row-num)) 0))
+         (inc (nth-tri row-num))))
 
 (defn render-row
   [board row-num]
