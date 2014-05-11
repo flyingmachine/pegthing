@@ -21,7 +21,7 @@
   [n]
   (= n (last (take-while #(>= n %) tri))))
 
-(defn nth-tri
+(defn row-tri
   [n]
   (last (take n tri)))
 
@@ -76,7 +76,7 @@
 (defn new-board
   [rows]
   (let [initial-board {:rows rows}
-        max-pos (nth-tri rows)]
+        max-pos (row-tri rows)]
     (reduce (fn [board pos] (add-pos board max-pos pos))
             initial-board
             (range 1 (inc max-pos)))))
@@ -153,8 +153,8 @@
 
 (defn row-positions
   [row-num]  
-  (range (inc (or (nth-tri (dec row-num)) 0))
-         (inc (nth-tri row-num))))
+  (range (inc (or (row-tri (dec row-num)) 0))
+         (inc (row-tri row-num))))
 
 (defn render-row
   [board row-num]
