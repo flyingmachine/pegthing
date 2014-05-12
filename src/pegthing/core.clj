@@ -238,7 +238,6 @@
     (query-empty-peg board)))
 
 (defn -main
-  "I don't do a whole lot ... yet."
   [& args]
   (println "Get ready to play peg thing!")
   (query-rows))
