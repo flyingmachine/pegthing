@@ -22,8 +22,9 @@
   (= n (last (take-while #(>= n %) tri))))
 
 (defn row-tri
+  "The triangular number at the end of row n"
   [n]
-  (last (take n tri)))
+  (nth (dec n) tri))
 
 (defn row-num
   "Returns row number the position belongs to: pos 1 in row 1,
@@ -34,9 +35,10 @@
 (defn in-bounds?
   "Is every position less than or equal the max position?"
   [max-pos & positions]
-  (every? (fn [pos] (>= max-pos pos)) positions))
+  (= max-pos (apply max max-pos positions)))
 
 (defn connect
+  "Form a mutual connection between two positions"
   [board max-pos pos neighbor destination]
   (if (in-bounds? max-pos neighbor destination)
     (reduce (fn [new-board [p1 p2]] (assoc-in new-board [p1 :connections p2] neighbor))
@@ -67,6 +69,7 @@
     (connect board max-pos pos neighbor destination)))
 
 (defn add-pos
+  "Pegs the position and performs connections"
   [board max-pos pos]
   (let [pegged-board (assoc-in board [pos :pegged] true)]
     (reduce (fn [new-board connector] (connector new-board max-pos pos))
@@ -193,6 +196,7 @@
 
 (defn prompt-move
   [board]
+  (println "\nHere's your board:")
   (print-board board)
   (println "Move from where to where? Enter two letters:")
   (let [input (map letter->pos (characters-as-strings (get-input)))]
@@ -205,9 +209,7 @@
 (defn successful-move
   [board]
   (if (can-move? board)
-    (do
-      (print-board board)
-      (prompt-move board))
+    (prompt-move board)
     (game-over board)))
 
 (defn game-over
@@ -223,21 +225,21 @@
           (println "Bye!")
           (System/exit 0))))))
 
-(defn query-empty-peg
+(defn prompt-empty-peg
   [board]
   (println "Here's your board:")
   (print-board board)
   (println "Remove which peg? [e]")
   (prompt-move (remove-peg board (letter->pos (get-input "e")))))
 
-(defn query-rows
+(defn prompt-rows
   []
   (println "How many rows? [5]")
   (let [rows (get-input 5)
         board (new-board rows)]
-    (query-empty-peg board)))
+    (prompt-empty-peg board)))
 
 (defn -main
   [& args]
   (println "Get ready to play peg thing!")
-  (query-rows))
+  (prompt-rows))
