@@ -24,7 +24,7 @@
 (defn row-tri
   "The triangular number at the end of row n"
   [n]
-  (nth (dec n) tri))
+  (last (take n tri)))
 
 (defn row-num
   "Returns row number the position belongs to: pos 1 in row 1,
@@ -91,6 +91,8 @@
   (get-in board [pos :pegged]))
 
 (defn valid-moves
+  "Return a map of all valid moves for pos, where the key is the
+  destination and the value is the jumped position"
   [board pos]
   (into {}
         (filter (fn [[destination jumped]]
@@ -99,6 +101,8 @@
                 (get-in board [pos :connections]))))
 
 (defn valid-move?
+  "Return jumped position if the move from p1 to p2 is valid, nil
+  otherwise"
   [board p1 p2]
   (get (valid-moves board p1) p2))
 
@@ -116,11 +120,13 @@
   (add-peg (remove-peg board p1) p2))
 
 (defn make-move
+  "Move peg from p1 to p2, removing jumped peg"
   [board p1 p2]
   (if-let [jumped (valid-move? board p1 p2)]
     (move-peg (remove-peg board jumped) p1 p2)))
 
 (defn can-move?
+  "Do any of the pegged positions have valid moves?"
   [board]
   (some (comp not-empty (partial valid-moves board))
         (map first (filter #(get (second %) :pegged) board))))
