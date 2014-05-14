@@ -146,10 +146,12 @@
    :reset "[0m"})
 
 (defn ansi
+  "Produce a string which will apply an ansi style"
   [style]
   (str \u001b (style ansi-styles)))
 
 (defn colorize
+  "Apply ansi color to text"
   [text color]
   (str (ansi color) text (ansi :reset)))
 
@@ -161,34 +163,37 @@
          (colorize "-" :red))))
 
 (defn row-positions
+  "Return all positions in the given row"
   [row-num]  
   (range (inc (or (row-tri (dec row-num)) 0))
          (inc (row-tri row-num))))
 
-(defn render-row
-  [board row-num]
-  (clojure.string/join " " (map (partial render-pos board) (row-positions row-num))))
-
 (defn row-padding
+  "String of spaces to add to the beginning of a row to center it"
   [row-num rows]
   (let [pad-length (/ (* (- rows row-num) pos-chars) 2)]
     (apply str (take pad-length (repeat " ")))))
 
+(defn render-row
+  [board row-num]
+  (str (row-padding row-num (:rows board))
+       (clojure.string/join " " (map (partial render-pos board) (row-positions row-num)))))
+
 (defn print-board
   [board]
   (doseq [row-num (range 1 (inc (:rows board)))]
-    (let [row-string (render-row board row-num)
-          padding (row-padding row-num (:rows board))]
-      (println padding row-string))))
+    (println (render-row board row-num))))
 
 ;;;;
 ;; Interaction
 ;;;;
 (defn letter->pos
+  "Converts a letter string to the corresponding position number"
   [letter]
   (inc (- (int (first letter)) alpha-start)))
 
 (defn get-input
+  "Waits for user to enter text and hit enter, then cleans the input"
   ([] (get-input nil))
   ([default]
      (let [input (clojure.string/trim (read-line))]
@@ -197,6 +202,8 @@
          (clojure.string/lower-case input)))))
 
 (defn characters-as-strings
+  "Given a string, return a collection consisting of each indivisual
+  character"
   [string]
   (re-seq #"[a-zA-Z]" string))
 
