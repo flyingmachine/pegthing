@@ -199,7 +199,9 @@
      (let [input (clojure.string/trim (read-line))]
        (if (empty? input)
          default
-         (clojure.string/lower-case input)))))
+         (cond
+           (re-matches #"\d+" input) (read-string input)
+           :else (clojure.string/lower-case input))))))
 
 (defn characters-as-strings
   "Given a string, return a collection consisting of each indivisual
