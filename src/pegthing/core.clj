@@ -2,7 +2,7 @@
   (require [clojure.set :as set])
   (:gen-class))
 
-(declare successful-move prompt-move game-over query-rows)
+(declare successful-move prompt-move game-over prompt-rows)
 
 ;;;;
 ;; Create the board
@@ -164,7 +164,7 @@
 
 (defn row-positions
   "Return all positions in the given row"
-  [row-num]  
+  [row-num]
   (range (inc (or (row-tri (dec row-num)) 0))
          (inc (row-tri row-num))))
 
@@ -233,7 +233,7 @@
     (println "Play again? y/n [y]")
     (let [input (get-input "y")]
       (if (= "y" input)
-        (query-rows)
+        (prompt-rows)
         (do
           (println "Bye!")
           (System/exit 0))))))
