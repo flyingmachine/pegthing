@@ -194,7 +194,7 @@
 
 (defn get-input
   "Waits for user to enter text and hit enter, then cleans the input"
-  ([] (get-input nil))
+  ([] (get-input ""))
   ([default]
      (let [input (clojure.string/trim (read-line))]
        (if (empty? input)
