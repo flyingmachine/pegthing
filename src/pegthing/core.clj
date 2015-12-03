@@ -87,6 +87,7 @@
 ;; Move pegs
 ;;;;
 (defn pegged?
+  "Does the position have a peg in it?"
   [board pos]
   (get-in board [pos :pegged]))
 
@@ -107,17 +108,19 @@
   (get (valid-moves board p1) p2))
 
 (defn remove-peg
-  [board p]
-  (assoc-in board [p :pegged] false))
+  "Take the peg at given position out of the board"
+  [board pos]
+  (assoc-in board [pos :pegged] false))
 
-(defn add-peg
-  [board p]
-  (assoc-in board [p :pegged] true))
+(defn place-peg
+  "Put a peg in the board at given position"
+  [board pos]
+  (assoc-in board [pos :pegged] true))
 
 (defn move-peg
   "Take peg out of p1 and place it in p2"
   [board p1 p2]
-  (add-peg (remove-peg board p1) p2))
+  (place-peg (remove-peg board p1) p2))
 
 (defn make-move
   "Move peg from p1 to p2, removing jumped peg"
