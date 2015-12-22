@@ -1,5 +1,4 @@
 (ns pegthing.core
-  (require [clojure.set :as set])
   (:gen-class))
 
 (declare successful-move prompt-move game-over prompt-rows)
@@ -95,11 +94,12 @@
   "Return a map of all valid moves for pos, where the key is the
   destination and the value is the jumped position"
   [board pos]
-  (into {}
-        (filter (fn [[destination jumped]]
-                  (and (not (pegged? board destination))
-                       (pegged? board jumped)))
-                (get-in board [pos :connections]))))
+  (if (pegged? board pos)
+    (into {}
+          (filter (fn [[destination jumped]]
+                    (and (not (pegged? board destination))
+                         (pegged? board jumped)))
+                  (get-in board [pos :connections])))))
 
 (defn valid-move?
   "Return jumped position if the move from p1 to p2 is valid, nil
@@ -140,7 +140,7 @@
 (def alpha-start 97)
 (def alpha-end 123)
 (def letters (map (comp str char) (range alpha-start alpha-end)))
-(def pos-chars 3)
+(def pos-chars 2)
 
 (def ansi-styles
   {:red   "[31m"
@@ -174,13 +174,13 @@
 (defn row-padding
   "String of spaces to add to the beginning of a row to center it"
   [row-num rows]
-  (let [pad-length (/ (* (- rows row-num) pos-chars) 2)]
+  (let [pad-length (* (- rows row-num) pos-chars)]
     (apply str (take pad-length (repeat " ")))))
 
 (defn render-row
   [board row-num]
   (str (row-padding row-num (:rows board))
-       (clojure.string/join " " (map (partial render-pos board) (row-positions row-num)))))
+       (clojure.string/join "  " (map (partial render-pos board) (row-positions row-num)))))
 
 (defn print-board
   [board]
