@@ -139,7 +139,7 @@
 (def alpha-start 97)
 (def alpha-end 123)
 (def letters (map (comp str char) (range alpha-start alpha-end)))
-(def pos-chars 3)
+(def pos-chars 2)
 
 (def ansi-styles
   {:red   "[31m"
@@ -173,13 +173,13 @@
 (defn row-padding
   "String of spaces to add to the beginning of a row to center it"
   [row-num rows]
-  (let [pad-length (/ (* (- rows row-num) pos-chars) 2)]
+  (let [pad-length (* (- rows row-num) pos-chars)]
     (apply str (take pad-length (repeat " ")))))
 
 (defn render-row
   [board row-num]
   (str (row-padding row-num (:rows board))
-       (clojure.string/join " " (map (partial render-pos board) (row-positions row-num)))))
+       (clojure.string/join "  " (map (partial render-pos board) (row-positions row-num)))))
 
 (defn print-board
   [board]
