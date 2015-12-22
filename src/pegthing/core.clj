@@ -94,11 +94,12 @@
   "Return a map of all valid moves for pos, where the key is the
   destination and the value is the jumped position"
   [board pos]
-  (into {}
-        (filter (fn [[destination jumped]]
-                  (and (not (pegged? board destination))
-                       (pegged? board jumped)))
-                (get-in board [pos :connections]))))
+  (if (pegged? board pos)
+    (into {}
+          (filter (fn [[destination jumped]]
+                    (and (not (pegged? board destination))
+                         (pegged? board jumped)))
+                  (get-in board [pos :connections])))))
 
 (defn valid-move?
   "Return jumped position if the move from p1 to p2 is valid, nil
