@@ -231,7 +231,7 @@
 (defn game-over
   [board]
   (let [remaining-pegs (count (filter :pegged (vals board)))]
-    (if (< remaining-pegs 2))
+    (if (< remaining-pegs 2)
       (println "You won!")
       (println "Game over! You had" remaining-pegs "pegs left:"))
     (print-board board)
