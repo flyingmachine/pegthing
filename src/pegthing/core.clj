@@ -1,5 +1,4 @@
 (ns pegthing.core
-  (require [clojure.set :as set])
   (:gen-class))
 
 (declare successful-move prompt-move game-over prompt-rows)
@@ -231,7 +230,9 @@
 (defn game-over
   [board]
   (let [remaining-pegs (count (filter :pegged (vals board)))]
-    (println "Game over! You had" remaining-pegs "pegs left:")
+    (if (< remaining-pegs 2)
+      (println "You won!")
+      (println "Game over! You had" remaining-pegs "pegs left:"))
     (print-board board)
     (println "Play again? y/n [y]")
     (let [input (get-input "y")]
