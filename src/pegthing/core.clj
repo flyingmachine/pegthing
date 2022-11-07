@@ -1,5 +1,5 @@
 (ns pegthing.core
-  (:require [clojure.string :as str])
+  (:require [clojure.set :as set])
   (:gen-class))
 
 (declare successful-move prompt-move game-over prompt-rows)
