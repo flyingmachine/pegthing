@@ -1,6 +1,7 @@
 (ns pegthing.core
-  (require [clojure.set :as set])
   (:gen-class))
+(require '[clojure.string :as str])
+
 
 (declare successful-move prompt-move game-over prompt-rows)
 
@@ -11,8 +12,8 @@
   "Generates lazy sequence of triangular numbers"
   ([] (tri* 0 1))
   ([sum n]
-     (let [new-sum (+ sum n)]
-       (cons new-sum (lazy-seq (tri* new-sum (inc n)))))))
+   (let [new-sum (+ sum n)]
+     (cons new-sum (lazy-seq (tri* new-sum (inc n)))))))
 
 (def tri (tri*))
 
@@ -134,6 +135,8 @@
   (some (comp not-empty (partial valid-moves board))
         (map first (filter #(get (second %) :pegged) board))))
 
+(def cant-move? (complement can-move?))
+
 ;;;;
 ;; Represent board textually and print it
 ;;;;
@@ -199,10 +202,10 @@
   "Waits for user to enter text and hit enter, then cleans the input"
   ([] (get-input ""))
   ([default]
-     (let [input (clojure.string/trim (read-line))]
-       (if (empty? input)
-         default
-         (clojure.string/lower-case input)))))
+   (let [input (clojure.string/trim (read-line))]
+     (if (empty? input)
+       default
+       (clojure.string/lower-case input)))))
 
 (defn characters-as-strings
   "Given a string, return a collection consisting of each individual
@@ -214,13 +217,15 @@
   [board]
   (println "\nHere's your board:")
   (print-board board)
-  (println "Move from where to where? Enter two letters:")
-  (let [input (map letter->pos (characters-as-strings (get-input)))]
-    (if-let [new-board (make-move board (first input) (second input))]
-      (successful-move new-board)
-      (do
-        (println "\n!!! That was an invalid move :(\n")
-        (prompt-move board)))))
+  (if (cant-move? board)
+    (game-over board)
+    ((println "Move from where to where? Enter two letters:")
+     (let [input (map letter->pos (characters-as-strings (get-input)))]
+       (if-let [new-board (make-move board (first input) (second input))]
+         (successful-move new-board)
+         (do
+           (println "\n!!! That was an invalid move :(\n")
+           (prompt-move board)))))))
 
 (defn successful-move
   [board]
